@@ -1,7 +1,8 @@
-# #!/usr/bin/python
-# # coding:utf-8
+# coding:utf-8
+# The function to download and get the data of MNIST
 
-# 用于下载和读取MNIST数据的函数
+
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -10,63 +11,66 @@ import os
 import tensorflow.python.platform
 import numpy
 from six.moves import urllib
-from six.moves import xrange  # pylint: disable=redefined-builtin
+from six.moves import xrange
 import tensorflow as tf
+
+
+
+# The URL of MNIST
 SOURCE_URL = 'http://yann.lecun.com/exdb/mnist/'
 
 
-# 若数据不存在，则从Yann的网站下载数据
 def maybe_download(filename, work_directory):
-  if not os.path.exists(work_directory):
-    os.mkdir(work_directory)
-  filepath = os.path.join(work_directory, filename)
-  # 若指定路径不存在,则开始从原网站上下载
-  if not os.path.exists(filepath):
-    filepath, _ = urllib.request.urlretrieve(SOURCE_URL + filename, filepath)
-    statinfo = os.stat(filepath)
-    print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
-  return filepath
+    if not os.path.exists(work_directory):
+        os.mkdir(work_directory)
+    filepath = os.path.join(work_directory, filename)
+    if not os.path.exists(filepath):
+        filepath, _ = urllib.request.urlretrieve(SOURCE_URL + filename, filepath)
+        statinfo = os.stat(filepath)
+        print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
+    return filepath
+
+
 def _read32(bytestream):
-  dt = numpy.dtype(numpy.uint32).newbyteorder('>')
-  return numpy.frombuffer(bytestream.read(4), dtype=dt)[0]
+    dt = numpy.dtype(numpy.uint32).newbyteorder('>')
+    return numpy.frombuffer(bytestream.read(4), dtype=dt)[0]
 
 
-# 将图像提取到一个4维uint8类型的numpy数组[index, y, x, depth]
 def extract_images(filename):
-  print('Extracting', filename)
-  with gzip.open(filename) as bytestream:
-    magic = _read32(bytestream)
-    if magic != 2051:
-      raise ValueError('Invalid magic number %d in MNIST image file: %s' % (magic, filename))
-    num_images = _read32(bytestream)
-    rows = _read32(bytestream)
-    cols = _read32(bytestream)
-    buf = bytestream.read(rows * cols * num_images)
-    data = numpy.frombuffer(buf, dtype=numpy.uint8)
-    data = data.reshape(num_images, rows, cols, 1)
-    return data
+    print('Extracting', filename)
+    with gzip.open(filename) as bytestream:
+        magic = _read32(bytestream)
+        if magic != 2051:
+            raise ValueError('Invalid magic number %d in MNIST image file: %s' % (magic, filename))
+        num_images = _read32(bytestream)
+        rows = _read32(bytestream)
+        cols = _read32(bytestream)
+        buf = bytestream.read(rows * cols * num_images)
+        data = numpy.frombuffer(buf, dtype=numpy.uint8)
+        data = data.reshape(num_images, rows, cols, 1)
+        return data
 
-# 将类标签从标量转换为一个one-hot向量
+
 def dense_to_one_hot(labels_dense, num_classes=10):
-  num_labels = labels_dense.shape[0]
-  index_offset = numpy.arange(num_labels) * num_classes
-  labels_one_hot = numpy.zeros((num_labels, num_classes))
-  labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
-  return labels_one_hot
+    num_labels = labels_dense.shape[0]
+    index_offset = numpy.arange(num_labels) * num_classes
+    labels_one_hot = numpy.zeros((num_labels, num_classes))
+    labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
+    return labels_one_hot
 
-# 将标签提取到一维uint8类型的numpy数组[index]中
+
 def extract_labels(filename, one_hot=False):
-  print('Extracting', filename)
-  with gzip.open(filename) as bytestream:
-    magic = _read32(bytestream)
-    if magic != 2049:
-      raise ValueError('Invalid magic number %d in MNIST label file: %s' % (magic, filename))
-    num_items = _read32(bytestream)
-    buf = bytestream.read(num_items)
-    labels = numpy.frombuffer(buf, dtype=numpy.uint8)
-    if one_hot:
-      return dense_to_one_hot(labels)
-    return labels
+    print('Extracting', filename)
+    with gzip.open(filename) as bytestream:
+        magic = _read32(bytestream)
+        if magic != 2049:
+            raise ValueError('Invalid magic number %d in MNIST label file: %s' % (magic, filename))
+        num_items = _read32(bytestream)
+        buf = bytestream.read(num_items)
+        labels = numpy.frombuffer(buf, dtype=numpy.uint8)
+        if one_hot:
+            return dense_to_one_hot(labels)
+        return labels
 
 # 构造DataSet类
 # one_hot arg仅在fake_data为true时使用
