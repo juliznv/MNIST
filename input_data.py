@@ -15,10 +15,7 @@ from six.moves import xrange
 import tensorflow as tf
 
 
-
-# The URL of MNIST
 SOURCE_URL = 'http://yann.lecun.com/exdb/mnist/'
-
 
 def maybe_download(filename, work_directory):
     if not os.path.exists(work_directory):
@@ -72,9 +69,6 @@ def extract_labels(filename, one_hot=False):
             return dense_to_one_hot(labels)
         return labels
 
-# 构造DataSet类
-# one_hot arg仅在fake_data为true时使用
-# `dtype`可以是`uint8`，将输入保留为`[0,255]`，或`float32`以重新调整为[0,1]。
 class DataSet(object):
   def __init__(self, images, labels, fake_data=False, one_hot=False, dtype=tf.float32):
     dtype = tf.as_dtype(dtype).base_dtype
@@ -86,11 +80,9 @@ class DataSet(object):
     else:
       assert images.shape[0] == labels.shape[0], ('images.shape: %s labels.shape: %s' % (images.shape, labels.shape))
       self._num_examples = images.shape[0]
-      # 将[num examples, rows, columns, depth]转换形状成[num examples, rows*columns] (assuming depth == 1)
       assert images.shape[3] == 1
       images = images.reshape(images.shape[0], images.shape[1] * images.shape[2])
       if dtype == tf.float32:
-        # 将[0, 255]转换为[0.0, 1.0].
         images = images.astype(numpy.float32)
         images = numpy.multiply(images, 1.0 / 255.0)
     self._images = images
@@ -110,7 +102,6 @@ class DataSet(object):
   def epochs_completed(self):
     return self._epochs_completed
 
-  # 从数据集返回下一个`batch_size`示例
   def next_batch(self, batch_size, fake_data=False):
     if fake_data:
       fake_image = [1] * 784
@@ -121,27 +112,22 @@ class DataSet(object):
       return [fake_image for _ in xrange(batch_size)], [fake_label for _ in xrange(batch_size)]
     start = self._index_in_epoch
     self._index_in_epoch += batch_size
-    # 完成一个epoch
     if self._index_in_epoch > self._num_examples:
-      # 随机抽取数据
       self._epochs_completed += 1
       perm = numpy.arange(self._num_examples)
       numpy.random.shuffle(perm)
       self._images = self._images[perm]
       self._labels = self._labels[perm]
-      # 开始下一个epoch
       start = 0
       self._index_in_epoch = batch_size
       assert batch_size <= self._num_examples
     end = self._index_in_epoch
     return self._images[start:end], self._labels[start:end]
 
-# 读取训练数据
 def read_data_sets(train_dir, fake_data=False, one_hot=False, dtype=tf.float32):
   class DataSets(object):
     pass
   data_sets = DataSets()
-  # 若fake_data为true则返回空数据
   if fake_data:
     def fake():
       return DataSet([], [], fake_data=True, one_hot=one_hot, dtype=dtype)
@@ -149,13 +135,11 @@ def read_data_sets(train_dir, fake_data=False, one_hot=False, dtype=tf.float32):
     data_sets.validation = fake()
     data_sets.test = fake()
     return data_sets
-  # 训练和测试数据文件名
   TRAIN_IMAGES = 'train-images-idx3-ubyte.gz'
   TRAIN_LABELS = 'train-labels-idx1-ubyte.gz'
   TEST_IMAGES = 't10k-images-idx3-ubyte.gz'
   TEST_LABELS = 't10k-labels-idx1-ubyte.gz'
   VALIDATION_SIZE = 5000
-  # 读取训练和测试数据
   local_file = maybe_download(TRAIN_IMAGES, train_dir)
   train_images = extract_images(local_file)
   local_file = maybe_download(TRAIN_LABELS, train_dir)
@@ -164,13 +148,10 @@ def read_data_sets(train_dir, fake_data=False, one_hot=False, dtype=tf.float32):
   test_images = extract_images(local_file)
   local_file = maybe_download(TEST_LABELS, train_dir)
   test_labels = extract_labels(local_file, one_hot=one_hot)
-  # 取前5000个作为验证数据
   validation_images = train_images[:VALIDATION_SIZE]
   validation_labels = train_labels[:VALIDATION_SIZE]
-  # 取前5000个以后的作为训练数据
   train_images = train_images[VALIDATION_SIZE:]
   train_labels = train_labels[VALIDATION_SIZE:]
-  # 定义训练,验证和测试
   data_sets.train = DataSet(train_images, train_labels, dtype=dtype)
   data_sets.validation = DataSet(validation_images, validation_labels, dtype=dtype)
   data_sets.test = DataSet(test_images, test_labels, dtype=dtype)
